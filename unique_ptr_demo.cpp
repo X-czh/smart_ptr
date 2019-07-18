@@ -9,7 +9,7 @@
 #include <utility>
 #include <cstdio>
 #include <cassert>
-#include "unique_ptr.hpp"
+#include "smart_ptr.hpp"
 
 using smart_ptr::unique_ptr;
 using smart_ptr::make_unique;

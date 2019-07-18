@@ -9,7 +9,7 @@
 
 using std::nullptr_t;
 using std::swap;
-using std::less; // 
+using std::less; // requires C++14 for TODO 
 
 namespace smart_ptr {
 
