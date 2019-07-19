@@ -6,6 +6,7 @@
 #include <iostream>
 #include <fstream>
 #include <vector>
+#include <memory>
 #include <utility>
 #include <cstdio>
 #include <cassert>
@@ -13,6 +14,9 @@
 
 using smart_ptr::unique_ptr;
 using smart_ptr::make_unique;
+
+// using std::unique_ptr;
+// using std::make_unique; // requires C++14
 
 void close_file(std::FILE* fp) { std::fclose(fp); }
 
@@ -32,7 +36,6 @@ struct D : B
 int main()
 {
     std::cout << "===============unique_ptr demo===============" << std::endl;
-
     std::cout << "\nExclusive ownership semantics demo\n";
     {
         auto up = make_unique<D>(); // up is a unique_ptr that owns a D
@@ -41,7 +44,7 @@ int main()
         p->bar(); // and p owns the D object
         up.reset(p); // up regains ownership from p
     } // ~D called here
- 
+
     std::cout << "\nRuntime polymorphism demo\n";
     {
         unique_ptr<B> up = make_unique<D>(); // up is a unique_ptr that owns a D as a pointer to B
@@ -76,8 +79,8 @@ int main()
 
     std::cout << "\nArray form of unique_ptr demo\n";
     {
-        std::cout << "Not supported." << std::endl;
-        // unique_ptr<D[]> up{new D[3]};
+        unique_ptr<D[]> up{new D[3]};
+        up[2].bar();
     } // calls ~D 3 times
 
     return 0;
