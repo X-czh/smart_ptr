@@ -1,15 +1,13 @@
-#ifndef UNIQUE_PTR_HPP
-#define UNIQUE_PTR_HPP
+// unique_ptr implementation
 
-#include <cstddef>
-#include <utility>
-#include <functional>
+#ifndef UNIQUE_PTR_HPP
+#define UNIQUE_PTR_HPP 1
+
+#include <cstddef>              /// nullptr_t
+#include <utility>              /// swap
+#include <functional>           /// less
 
 #include "default_delete.hpp"
-
-using std::nullptr_t;
-using std::swap;
-using std::less; // auto deduction of the parameter types and return type requires C++14
 
 namespace smart_ptr {
 
@@ -28,36 +26,35 @@ public:
     constexpr unique_ptr() noexcept = default;
 
     /// Constructs with nullptr, creates a unique_ptr that owns nothing
-    constexpr unique_ptr(nullptr_t) noexcept { }
+    constexpr unique_ptr(std::nullptr_t) noexcept
+    { }
 
     /// Takes ownership from a pointer
     explicit unique_ptr(pointer p) noexcept
-    : _ptr{p} { }
+    : _ptr{p}
+    { }
 
-    /// Takes ownership from a pointer, supplied with a custom deleter,
-    /// constraints on custom deleter is not checker
+    /// Takes ownership from a pointer, supplied with a custom deleter
     explicit unique_ptr(pointer p, deleter_type d) noexcept
-    : _ptr{p}, _deleter{d} { }
+    : _ptr{p}, _deleter{d}
+    { }
 
     /// Move constructor: takes ownership from a unique_ptr of the same type
     unique_ptr(unique_ptr&& up) noexcept
-    : _ptr{up.release()}, _deleter{up.get_deleter()} { }
+    : _ptr{up.release()}, _deleter{up.get_deleter()}
+    { }
 
-    /// Move constructor: takes ownership from a unique_ptr of a different type,
-    /// convertibility is not checked
+    /// Move constructor: takes ownership from a unique_ptr of a different type
     template <typename U, typename E>
     unique_ptr(unique_ptr<U, E>&& up) noexcept
-    : _ptr{up.release()}, _deleter{up.get_deleter()} { }
+    : _ptr{up.release()}, _deleter{up.get_deleter()}
+    { }
 
     // Destructor
     
     /// Invokes the deleter if the stored pointer is not null
     ~unique_ptr() noexcept
-    {
-        if (_ptr != nullptr) {
-            _deleter(_ptr);
-        }
-    }
+    { if (_ptr) _deleter(_ptr); }
 
     // Assignment
 
@@ -69,8 +66,7 @@ public:
         return *this;
     }
 
-    /// Move assignment: takes ownership from a unique_ptr of a different type,
-    /// convertibility is not checked
+    /// Move assignment: takes ownership from a unique_ptr of a different type
     template <typename U, typename E>
     unique_ptr& operator=(unique_ptr<U, E>&& up) noexcept
     {
@@ -81,7 +77,7 @@ public:
 
     /// Resets unique_ptr to empty if assigned to nullptr 
     unique_ptr&
-    operator=(nullptr_t) noexcept
+    operator=(std::nullptr_t) noexcept
     {
         reset();
         return *this;
@@ -91,13 +87,13 @@ public:
 
     /// Dereferences pointer to the managed object
     element_type&
-    operator*() const
+    operator*() const noexcept
     { return *_ptr; }
 
     /// Dereferences pointer to the managed object
     pointer 
     operator->() const noexcept
-    { return &(this->operator*()); }
+    { return _ptr; }
 
     /// Gets the stored pointer
     pointer
@@ -129,13 +125,11 @@ public:
         return cp;
     }
 
-    /// Resets unique_ptr to empty and take ownership from a pointer
+    /// Resets unique_ptr to empty and takes ownership from a pointer
     void
     reset(pointer p) noexcept
     {
-        if (_ptr != nullptr) {
-            _deleter(_ptr); 
-        }
+        if (_ptr) _deleter(_ptr); 
         _ptr = p;
     }
 
@@ -143,9 +137,7 @@ public:
     void
     reset() noexcept
     {
-        if (_ptr != nullptr) {
-            _deleter(_ptr);
-        }
+        if (_ptr) _deleter(_ptr);
         _ptr = pointer{}; /// probably nullptr
     }
 
@@ -153,8 +145,9 @@ public:
     void
     swap(unique_ptr& up) noexcept
     {
-        swap(_ptr, up.get());
-        swap(_deleter, up.get_deleter());
+        using std::swap;
+        swap(_ptr, up._ptr);
+        swap(_deleter, up._deleter);
     }
     
     // Disable copy from lvalue
@@ -186,29 +179,29 @@ public:
     constexpr unique_ptr() noexcept = default;
 
     /// Constructs with nullptr, creates a unique_ptr that owns nothing
-    constexpr unique_ptr(nullptr_t) noexcept { }
+    constexpr unique_ptr(std::nullptr_t) noexcept
+    { }
 
     /// Takes ownership from a pointer
     explicit unique_ptr(pointer p) noexcept
-    : _ptr{p} { }
+    : _ptr{p}
+    { }
 
     /// Takes ownership from a pointer, supplied with a custom deleter
     explicit unique_ptr(pointer p, deleter_type d) noexcept
-    : _ptr{p}, _deleter{d} { }
+    : _ptr{p}, _deleter{d}
+    { }
 
     /// Move constructor: takes ownership from a unique_ptr of the same type
     unique_ptr(unique_ptr&& up) noexcept
-    : _ptr{up.release()}, _deleter{up.get_deleter()} { }
+    : _ptr{up.release()}, _deleter{up.get_deleter()}
+    { }
 
     // Destructor
     
     /// Invokes the deleter if the stored pointer is not null
     ~unique_ptr() noexcept
-    {
-        if (_ptr != nullptr) {
-            _deleter(_ptr);
-        }
-    }
+    { if (_ptr) _deleter(_ptr); }
 
     // Assignment
 
@@ -222,7 +215,7 @@ public:
 
     /// Resets unique_ptr to empty if assigned to nullptr 
     unique_ptr&
-    operator=(nullptr_t) noexcept
+    operator=(std::nullptr_t) noexcept
     {
         reset();
         return *this;
@@ -233,7 +226,7 @@ public:
     /// Index operator, dereferencing operators are not provided,
     /// bound range is not checked
     element_type&
-    operator[](size_t i) const 
+    operator[](size_t i) const noexcept
     { return _ptr[i]; }
 
     /// Gets the stored pointer
@@ -266,13 +259,11 @@ public:
         return cp;
     }
 
-    /// Resets unique_ptr to empty and take ownership from a pointer
+    /// Resets unique_ptr to empty and takes ownership from a pointer
     void
     reset(pointer p) noexcept
     {
-        if (_ptr != nullptr) {
-            _deleter(_ptr); 
-        }
+        if (_ptr) _deleter(_ptr); 
         _ptr = p;
     }
 
@@ -280,9 +271,7 @@ public:
     void
     reset() noexcept
     {
-        if (_ptr != nullptr) {
-            _deleter(_ptr);
-        }
+        if (_ptr) _deleter(_ptr);
         _ptr = pointer{}; /// probably nullptr
     }
 
@@ -290,8 +279,9 @@ public:
     void
     swap(unique_ptr& up) noexcept
     {
-        swap(_ptr, up.get());
-        swap(_deleter, up.get_deleter());
+        using std::swap;
+        swap(_ptr, up._ptr);
+        swap(_deleter, up._deleter);
     }
     
     // Disable copy from lvalue
@@ -331,12 +321,12 @@ template <typename T, typename D,
 
 template<typename T, typename D>
     inline bool
-    operator==(const unique_ptr<T, D>& up, nullptr_t) noexcept
+    operator==(const unique_ptr<T, D>& up, std::nullptr_t) noexcept
     { return !up; }
 
 template<typename T, typename D>
     inline bool
-    operator==(nullptr_t, const unique_ptr<T, D>& up) noexcept
+    operator==(std::nullptr_t, const unique_ptr<T, D>& up) noexcept
     { return !up; }
 
 /// Operator != overloading
@@ -349,12 +339,12 @@ template <typename T, typename D,
 
 template<typename T, typename D>
     inline bool
-    operator!=(const unique_ptr<T, D>& up, nullptr_t) noexcept
+    operator!=(const unique_ptr<T, D>& up, std::nullptr_t) noexcept
     { return bool{up}; }
 
 template<typename T, typename D>
     inline bool
-    operator!=(nullptr_t, const unique_ptr<T, D>& up) noexcept
+    operator!=(std::nullptr_t, const unique_ptr<T, D>& up) noexcept
     { return bool{up}; }
 
 /// Operator < overloading
@@ -363,17 +353,17 @@ template <typename T, typename D,
     inline bool
     operator<(const unique_ptr<T, D>& up1,
                const unique_ptr<U, E>& up2)
-    { return less<>(up1.get(), up2.get()); }
+    { return std::less<>(up1.get(), up2.get()); }
 
 template <typename T, typename D>
     inline bool
-    operator<(const unique_ptr<T, D>& up, nullptr_t)
-    { return less<>(up.get(), nullptr); }
+    operator<(const unique_ptr<T, D>& up, std::nullptr_t)
+    { return std::less<>(up.get(), nullptr); }
 
 template <typename T, typename D>
     inline bool
-    operator<(nullptr_t, const unique_ptr<T, D>& up)
-    { return less<>(nullptr, up.get()); }
+    operator<(std::nullptr_t, const unique_ptr<T, D>& up)
+    { return std::less<>(nullptr, up.get()); }
 
 /// Operator <= overloading
 template <typename T, typename D,
@@ -385,12 +375,12 @@ template <typename T, typename D,
 
 template <typename T, typename D>
     inline bool
-    operator<=(const unique_ptr<T, D>& up, nullptr_t)
+    operator<=(const unique_ptr<T, D>& up, std::nullptr_t)
     { return !(nullptr < up.get()); }
 
 template <typename T, typename D>
     inline bool
-    operator<=(nullptr_t, const unique_ptr<T, D>& up)
+    operator<=(std::nullptr_t, const unique_ptr<T, D>& up)
     { return !(up.get() < nullptr); }
 
 /// Operator > overloading
@@ -403,12 +393,12 @@ template <typename T, typename D,
 
 template <typename T, typename D>
     inline bool
-    operator>(const unique_ptr<T, D>& up, nullptr_t)
+    operator>(const unique_ptr<T, D>& up, std::nullptr_t)
     { return nullptr < up.get(); }
 
 template <typename T, typename D>
     inline bool
-    operator>(nullptr_t, const unique_ptr<T, D>& up)
+    operator>(std::nullptr_t, const unique_ptr<T, D>& up)
     { return up.get() < nullptr; }
 
 /// Operator >= overloading
@@ -416,17 +406,17 @@ template <typename T, typename D,
           typename U, typename E>
     inline bool
     operator>=(const unique_ptr<T, D>& up1,
-               const unique_ptr<T, D>& up2)
+               const unique_ptr<U, E>& up2)
     { return !(up1.get() < up2.get()); }
 
 template <typename T, typename D>
     inline bool
-    operator>=(const unique_ptr<T, D>& up, nullptr_t)
+    operator>=(const unique_ptr<T, D>& up, std::nullptr_t)
     { return !(up.get() < nullptr); }
 
 template <typename T, typename D>
     inline bool
-    operator>=(nullptr_t, const unique_ptr<T, D>& up)
+    operator>=(std::nullptr_t, const unique_ptr<T, D>& up)
     { return !(nullptr < up.get()); }
 
 } // namespace smart_ptr

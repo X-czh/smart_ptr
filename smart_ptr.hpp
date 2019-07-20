@@ -1,8 +1,8 @@
 #ifndef SMART_PTR_HPP
-#define SMART_PTR_HPP
+#define SMART_PTR_HPP 1
 
-#include "unique_ptr.hpp"
-#include "shared_ptr.hpp"
-#include "weak_ptr.hpp"
+#include "src/unique_ptr.hpp"
+#include "src/shared_ptr.hpp"
+#include "src/weak_ptr.hpp"
 
 #endif

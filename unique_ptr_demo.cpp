@@ -1,3 +1,5 @@
+// demo of unique_ptr
+
 /**
  *  Modified from cppreference.com's demo code of std::unique_ptr:
  *  https://en.cppreference.com/w/cpp/memory/unique_ptr.
@@ -6,17 +8,17 @@
 #include <iostream>
 #include <fstream>
 #include <vector>
-#include <memory>
 #include <utility>
 #include <cstdio>
 #include <cassert>
-#include "smart_ptr.hpp"
 
-using smart_ptr::unique_ptr;
-using smart_ptr::make_unique;
-
+// #include <memory>
 // using std::unique_ptr;
 // using std::make_unique; // requires C++14
+
+#include "smart_ptr.hpp"
+using smart_ptr::unique_ptr;
+using smart_ptr::make_unique;
 
 void close_file(std::FILE* fp) { std::fclose(fp); }
 

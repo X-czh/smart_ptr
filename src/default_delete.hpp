@@ -1,5 +1,5 @@
 #ifndef DEFAULT_DELETE_HPP
-#define DEFAULT_DELETE_HPP
+#define DEFAULT_DELETE_HPP 1
 
 namespace smart_ptr {
 
