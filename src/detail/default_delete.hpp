@@ -1,7 +1,9 @@
+// default deleter implementation
+
 #ifndef DEFAULT_DELETE_HPP
 #define DEFAULT_DELETE_HPP 1
 
-namespace smart_ptr {
+namespace detail {
 
 // deafault_delete for single object
 
@@ -41,6 +43,6 @@ public:
     { delete[] p; }
 };
 
-} // namespace smart_ptr
+} // namespace detail
 
 #endif
