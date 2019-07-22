@@ -3,12 +3,12 @@
 #ifndef WEAK_PTR_HPP
 #define WEAK_PTR_HPP 1
 
-#include "detail/control_block.hpp"
+#include "control_block.hpp"
 #include "shared_ptr.hpp"
 
 namespace smart_ptr {
 
-// Forward declaration of shared_ptr
+// Forward declarations
 
 template<typename T> class shared_ptr;
 
@@ -141,9 +141,9 @@ private:
 
 /// Swaps with another weak_ptr
 template<typename T>
-inline void
-swap(weak_ptr<T>& wp1, weak_ptr<T>& wp2)
-{ wp1.swap(wp2); }
+    inline void
+    swap(weak_ptr<T>& wp1, weak_ptr<T>& wp2)
+    { wp1.swap(wp2); }
 
 } // namespace smart_ptr
 

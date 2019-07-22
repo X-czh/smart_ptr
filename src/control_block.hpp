@@ -1,4 +1,4 @@
-// control block implementation
+// control_block implementation
 
 #ifndef CONTROL_BLOCK_HPP
 #define CONTROL_BLOCK_HPP 1
@@ -7,6 +7,8 @@
 #include <atomic>       // atomic
 
 #include "default_delete.hpp"
+
+namespace smart_ptr {
 
 namespace detail {
 
@@ -118,5 +120,7 @@ private:
 };
 
 } // namespace detail
+
+} // namespace smart_ptr
 
 #endif

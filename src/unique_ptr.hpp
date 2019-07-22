@@ -6,14 +6,15 @@
 #include <cstddef>              /// nullptr_t
 #include <utility>              /// swap
 #include <functional>           /// less
+#include <type_traits>          /// remove_extent
 
-#include "detail/default_delete.hpp"
+#include "default_delete.hpp"
 
 namespace smart_ptr {
 
 // unique_ptr for single objects
 
-template<typename T, typename D = detail::default_delete<T>>
+template<typename T, typename D = default_delete<T>>
 class unique_ptr {
 public:
     using pointer = T*;
@@ -291,6 +292,7 @@ public:
 
     /// Disables copy assignment
     unique_ptr& operator=(const unique_ptr&) = delete;
+
 private:
     pointer _ptr;
     deleter_type _deleter;
@@ -298,12 +300,40 @@ private:
 
 // unique_ptr creation
 
-/// Creates a unique_ptr that manages a new object
-template <typename T, typename... Args>
-unique_ptr<T> make_unique(Args&&... args)
-{
-    return unique_ptr<T>{new T{args...}};
-}
+template<typename T>
+    struct _Unique_if {
+        using _Single_object = unique_ptr<T> ;
+    };
+
+template<typename T>
+    struct _Unique_if<T[]> {
+        using _Unknown_bound = unique_ptr<T[]> ;
+    };
+
+template<typename T, std::size_t N>
+    struct _Unique_if<T[N]> {
+        using _Known_bound = void;
+    };
+
+/// Only for non-array types
+template<typename T, typename... Args>
+    typename _Unique_if<T>::_Single_object
+    make_unique(Args&&... args) {
+        return unique_ptr<T>{new T{std::forward<Args>(args)...}};
+    }
+
+/// Only for array types with unknown bound
+template<typename T>
+    typename _Unique_if<T>::_Unknown_bound
+    make_unique(std::size_t n) {
+        using U = typename std::remove_extent<T>::type;
+        return unique_ptr<T>{new U[n]{}};
+    }
+
+/// Only for array types with known bound: unspecified
+template<typename T, typename... Args>
+    typename _Unique_if<T>::_Known_bound
+    make_unique(Args&&...) = delete;
 
 // unique_ptr comparison
 
@@ -419,19 +449,19 @@ template<typename T, typename D>
 
 /// Swaps with another unique_ptr
 template<typename T, typename D>
-inline void
-swap(unique_ptr<T, D>& up1, unique_ptr<T, D>& up2)
-{ up1.swap(up2); }
+    inline void
+    swap(unique_ptr<T, D>& up1, unique_ptr<T, D>& up2)
+    { up1.swap(up2); }
 
 // unique_ptr I/O
 
 template<class E, class T, class Y>
-std::basic_ostream<E, T>&
-operator<<(std::basic_ostream<E, T>& os, const unique_ptr<Y>& up)
-{
-    os << up.get();
-    return os;
-}
+    std::basic_ostream<E, T>&
+    operator<<(std::basic_ostream<E, T>& os, const unique_ptr<Y>& up)
+    {
+        os << up.get();
+        return os;
+    }
 
 } // namespace smart_ptr
 
@@ -453,7 +483,7 @@ struct hash<smart_ptr::unique_ptr<T>> {
     using argument_type = smart_ptr::unique_ptr<T>;
 
     size_t
-    operator()(const smart_ptr::unique_ptr<T>& s=up) const {
+    operator()(const smart_ptr::unique_ptr<T>& up) const {
         return hash<typename smart_ptr::unique_ptr<T>::element_type*>()(up.get());
     }
 };

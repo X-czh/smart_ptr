@@ -1,9 +1,14 @@
-// default deleter implementation
+// default_deleter implementation
+
+/**
+ * default_delete is the default destruction policy used by
+ * unique_ptr & shared_ptr when no deleter is specified.
+ */
 
 #ifndef DEFAULT_DELETE_HPP
 #define DEFAULT_DELETE_HPP 1
 
-namespace detail {
+namespace smart_ptr {
 
 // deafault_delete for single object
 
@@ -43,6 +48,6 @@ public:
     { delete[] p; }
 };
 
-} // namespace detail
+} // namespace smart_ptr
 
 #endif

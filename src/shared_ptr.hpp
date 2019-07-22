@@ -7,15 +7,18 @@
 #include <utility>      /// swap
 #include <functional>   /// less, hash
 #include <iostream>     /// basic_ostream
+#include <memory>       /// bad_weak_ptr
 
-#include "detail/control_block.hpp"
-#include "unique_ptr.hpp"
+#include "control_block.hpp"
+#include "bad_weak_ptr.hpp"
 #include "weak_ptr.hpp"
+#include "unique_ptr.hpp"
 
 namespace smart_ptr {
 
-// Forward declaration of weak_ptr
+// Forward declarations
 
+template<typename T, typename D> class unique_ptr;
 template<typename T> class weak_ptr;
 
 // shared_ptr for single object
@@ -147,7 +150,13 @@ public:
     explicit shared_ptr(const weak_ptr<U>& wp)
     : _ptr{wp._ptr},
       _control_block{wp._control_block}
-    { if (_control_block) _control_block->inc_ref();}
+    {
+        if (wp.expired()) {
+            throw bad_weak_ptr{};
+        } else {
+            _control_block->inc_ref();
+        }
+    }
 
     /// Constructs a shared_ptr object that obtains ownership from up
     /// Postconditions: use_count() == 1. up shall be empty. up.get() = 0.
@@ -294,12 +303,12 @@ private:
 
 /// Creates a shared_ptr that manages a new object
 template<typename T, typename... Args>
-shared_ptr<T> make_shared(Args&&... args)
-{ return shared_ptr<T>{new T{args...}}; }
+    shared_ptr<T> make_shared(Args&&... args)
+    { return shared_ptr<T>{new T{std::forward<Args>(args)...}}; }
 
 template<typename T, typename A, typename... Args>
-shared_ptr<T> allocate_shared(const A& a, Args&&... args)
-{}
+    shared_ptr<T> allocate_shared(const A& a, Args&&... args)
+    { // TODO }
 
 // shared_ptr comparison
 
@@ -409,26 +418,26 @@ template<typename T>
 
 /// Swaps with another shared_ptr
 template<typename T>
-inline void
-swap(shared_ptr<T>& sp1, shared_ptr<T>& sp2)
-{ sp1.swap(sp2); }
+    inline void
+    swap(shared_ptr<T>& sp1, shared_ptr<T>& sp2)
+    { sp1.swap(sp2); }
 
 // get_deleter
 
 template<typename D, typename T>
-D*
-get_deleter(const shared_ptr<T>& sp) noexcept
-{ return reinterpret_cast<D*>(sp._control_block->get_deleter()); }
+    D*
+    get_deleter(const shared_ptr<T>& sp) noexcept
+    { return reinterpret_cast<D*>(sp._control_block->get_deleter()); }
 
 // shared_ptr I/O
 
 template<class E, class T, class Y>
-std::basic_ostream<E, T>&
-operator<<(std::basic_ostream<E, T>& os, const shared_ptr<Y>& sp)
-{
-    os << sp.get();
-    return os;
-}
+    std::basic_ostream<E, T>&
+    operator<<(std::basic_ostream<E, T>& os, const shared_ptr<Y>& sp)
+    {
+        os << sp.get();
+        return os;
+    }
 
 } // namespace smart_ptr
 
