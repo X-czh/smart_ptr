@@ -19,8 +19,7 @@ struct Base
     Base() { std::cout << "  Base::Base()\n"; }
     // Note: non-virtual destructor is OK here
     // See https://stackoverflow.com/questions/3899790/shared-ptr-magic
-    // But my own implementation fails here
-    virtual ~Base() { std::cout << "  Base::~Base()\n"; }
+    ~Base() { std::cout << "  Base::~Base()\n"; }
 };
  
 struct Derived: public Base

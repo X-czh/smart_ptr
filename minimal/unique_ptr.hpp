@@ -6,6 +6,7 @@
  * No move semantics or custom deleter.
  * Does not support array objects with a runtime length.
  * Partial support of the interface.
+ * Weak type checking.
  */
 
 #include <cstdlib>      /// nullptr_t
@@ -53,25 +54,18 @@ public:
     { return (_ptr) ? true : false; }
 
     /// Releases ownership to the returned raw pointer
-    T* release()
+    T* release() noexcept
     {
         T* cp = _ptr;
         _ptr = nullptr;
         return cp;
     }
 
-    /// Resets unique_ptr to empty
-    void reset()
-    {
-        if (_ptr) delete(_ptr);
-        _ptr = nullptr;
-    }
-
     /// Resets unique_ptr to empty and takes ownership from a pointer
-    void reset(T* p) noexcept
+    void reset(T* p = nullptr) 
     {
-        if (_ptr) delete(_ptr);
-        _ptr = p;
+        unique_ptr tmp{p};
+        tmp.swap(*this);
     }
 
     /// Swaps with another unique_ptr
@@ -95,7 +89,7 @@ private:
 
 // Operator == overloading
 
-template <typename T, typename U>
+template<typename T, typename U>
     inline bool
     operator==(const unique_ptr<T>& sp1,
                const unique_ptr<U>& sp2)
@@ -113,7 +107,7 @@ template<typename T>
 
 // Operator != overloading
 
-template <typename T, typename U>
+template<typename T, typename U>
     inline bool
     operator!=(const unique_ptr<T>& sp1,
                const unique_ptr<U>& sp2)

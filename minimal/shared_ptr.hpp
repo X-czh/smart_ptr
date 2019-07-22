@@ -7,11 +7,32 @@
  * No move semantics, custom deleter, or custom allocator.
  * Does not support array objects with a runtime length.
  * Partial support of the interface.
+ * Weak type checking.
  */
 
 #include <cstdlib>      /// nullptr_t
 #include <atomic>       /// atomic
 #include <utility>      /// swap
+
+namespace detail {
+
+// Type erasure for run-time polymorphic behavior of deleter 
+
+class deleter_base {
+public:
+    virtual ~deleter_base() = default;
+    virtual void operator()(void*) = 0;
+};
+
+template <typename T>
+class deleter : public deleter_base {
+public:
+    void operator()(void* p) override {
+        delete static_cast<T*>(p);
+    }
+};
+
+} // namespace detail
 
 template<typename T>
 class shared_ptr {
@@ -22,33 +43,41 @@ public:
     // Constructors
 
     /// Default constructor, constructs an empty shared_ptr
-    shared_ptr() noexcept = default;
+    constexpr shared_ptr() noexcept = default;
 
     /// Constructs an empty shared_ptr
-    shared_ptr(std::nullptr_t) noexcept
+    constexpr shared_ptr(std::nullptr_t) noexcept
     { }
 
     /// Constructor to wrap raw pointer
     shared_ptr(T* p)
-    : _ptr{p}, _ref_count{new std::atomic<long>{1}}
+    : _ptr{p},
+      _ref_count{new std::atomic<long>{1}},
+      _deleter{new detail::deleter<T>()}
     { }
 
     /// Constructor to wrap raw pointer of convertible type
     template<typename U>
     shared_ptr(U* p)
-    : _ptr{static_cast<T*>(p)}, _ref_count{new std::atomic<long>{1}}
+    : _ptr{p},
+      _ref_count{new std::atomic<long>{1}},
+      _deleter{new detail::deleter<U>()}
     { }
 
     /// Copy constructor
-    shared_ptr(const shared_ptr& sp)
-    : _ptr{sp._ptr}, _ref_count{sp._ref_count}
-    { if (_ref_count) ++(*_ref_count); }
+    shared_ptr(const shared_ptr& sp) noexcept
+    : _ptr{sp._ptr},
+      _ref_count{sp._ref_count},
+      _deleter{sp._deleter}
+    { if (_ptr) ++(*_ref_count); }
 
     /// Conversion constructor
     template<typename U>
-    shared_ptr(const shared_ptr<U>& sp)
-    : _ptr{static_cast<T*>(sp._ptr)}, _ref_count{sp._ref_count}
-    { if (_ref_count) ++(*_ref_count); }
+    shared_ptr(const shared_ptr<U>& sp) noexcept
+    : _ptr{sp._ptr},
+      _ref_count{sp._ref_count},
+      _deleter{sp._deleter}
+    { if (_ptr) ++(*_ref_count); }
 
     // Destructor
 
@@ -56,29 +85,22 @@ public:
     /// otherwise release the resources
     ~shared_ptr()
     {
-        if (_ptr && _ref_count) {
+        if (_ptr) {
             if (--(*_ref_count) == 0) {
-                delete _ptr;
                 delete _ref_count;
-            }   
+                (*_deleter)(_ptr);
+                delete _deleter;
+            }
         }
     }
 
     // Assignment
 
-    shared_ptr& operator=(const shared_ptr& sp)
+    shared_ptr& operator=(const shared_ptr& sp) noexcept
     {
-        if (_ptr != sp._ptr) {
-            if (_ptr && _ref_count) {
-                if (--(*_ref_count) == 0) {
-                    delete _ptr;
-                    delete _ref_count;
-                }
-            }
-            _ptr = sp._ptr;
-            _ref_count = sp._ref_count;
-            if (_ref_count) ++(*_ref_count);
-        }
+        /// copy and swap idiom
+        shared_ptr tmp{sp};
+        tmp.swap(*this);
         return *this;
     }
 
@@ -120,7 +142,7 @@ public:
     void reset() noexcept
     {
         shared_ptr tmp{};
-        swap(tmp);
+        tmp.swap(*this);
     }
 
     /// Resets shared_ptr to wrap raw pointer p
@@ -128,7 +150,7 @@ public:
     void reset(U* p)
     {
         shared_ptr tmp{p};
-        swap(tmp);
+        tmp.swap(*this);
     }
 
     /// Swap with another shared_ptr
@@ -136,16 +158,18 @@ public:
         using std::swap;
         swap(_ptr, sp._ptr);
         swap(_ref_count, sp._ref_count);
+        swap(_deleter, sp._deleter);
     }
 
 private:
     T* _ptr;                        /// contained pointer
     std::atomic<long>* _ref_count;  /// reference counter
+    detail::deleter_base* _deleter; /// deleter
 };
 
 // Operator == overloading
 
-template <typename T, typename U>
+template<typename T, typename U>
     inline bool
     operator==(const shared_ptr<T>& sp1,
                const shared_ptr<U>& sp2)
@@ -163,7 +187,7 @@ template<typename T>
 
 // Operator != overloading
 
-template <typename T, typename U>
+template<typename T, typename U>
     inline bool
     operator!=(const shared_ptr<T>& sp1,
                const shared_ptr<U>& sp2)
