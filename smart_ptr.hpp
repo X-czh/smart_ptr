@@ -3,12 +3,12 @@
 #ifndef SMART_PTR_HPP
 #define SMART_PTR_HPP 1
 
-#include "src/unique_ptr.hpp"
-#include "src/shared_ptr.hpp"
-#include "src/weak_ptr.hpp"
+#include "include/unique_ptr.hpp"
+#include "include/shared_ptr.hpp"
+#include "include/weak_ptr.hpp"
 
-#include "default_delete.hpp"
-#include "bad_weak_ptr.hpp"
-#include "owner_less.hpp"
+#include "include/default_delete.hpp"
+#include "include/bad_weak_ptr.hpp"
+#include "include/owner_less.hpp"
 
 #endif
