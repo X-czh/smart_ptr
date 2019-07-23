@@ -24,9 +24,12 @@ namespace smart_ptr {
 
 // Forward declarations
 
-// owner_less
+template<typename T> class shared_ptr;
+template<typename T> class weak_ptr;
 
-template<class T> struct owner_less;
+// 20.7.2.3.7, Class template owner_less
+
+template<typename T> struct owner_less;
 
 template<typename T>
 struct owner_less<shared_ptr<T>> {

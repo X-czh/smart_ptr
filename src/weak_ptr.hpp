@@ -12,7 +12,7 @@ namespace smart_ptr {
 
 template<typename T> class shared_ptr;
 
-// weak_ptr
+// 20.7.2.3 Class template weak_ptr
 
 template <typename T>
 class weak_ptr {
@@ -25,7 +25,7 @@ public:
 
     using element_type = T;
 
-    // Constructors
+    // 20.7.2.3.1, constructors:
 
     /// Default constructor, creates an empty weak_ptr
     /// Postconditions: use_count() == 0.
@@ -57,12 +57,12 @@ public:
       _control_block{wp._control_block}
     { if (_control_block) _control_block->inc_wref(); }
 
-    // Destructor
+    // 20.7.2.3.2, destructor
 
     ~weak_ptr()
     { if (_control_block) _control_block->dec_wref(); }
 
-    // Assignment
+    // 20.7.2.3.3, assignment
 
     weak_ptr&
     operator=(const weak_ptr& wp) noexcept
@@ -87,7 +87,23 @@ public:
         return *this;
     }
 
-    // Observers
+    // 20.7.2.3.4, modifiers
+
+    /// Exchanges the contents of *this and sp
+    void
+    swap(weak_ptr& wp) noexcept
+    {
+        using std::swap;
+        swap(_ptr, wp._ptr);
+        swap(_control_block, wp._control_block);
+    }
+
+    /// Resets *this to empty
+    void
+    reset() noexcept
+    { weak_ptr{}.swap(*this); }
+
+    // 20.7.2.3.5, observers
 
     /// Gets use_count
     long
@@ -116,28 +132,12 @@ public:
     bool owner_before(weak_ptr<U> const& wp) const
     { return std::less<>(_control_block, wp._control_block); }
 
-    // Modifiers
-
-    /// Exchanges the contents of *this and sp
-    void
-    swap(weak_ptr& wp) noexcept
-    {
-        using std::swap;
-        swap(_ptr, wp._ptr);
-        swap(_control_block, wp._control_block);
-    }
-
-    /// Resets *this to empty
-    void
-    reset() noexcept
-    { weak_ptr{}.swap(*this); }
-
 private:
     element_type* _ptr;
     detail::control_block_base* _control_block;
 };
 
-// weak_ptr specialized algorithms
+// 20.7.2.3.6, specialized algorithm
 
 /// Swaps with another weak_ptr
 template<typename T>

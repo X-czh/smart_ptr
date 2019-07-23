@@ -10,7 +10,9 @@
 
 namespace smart_ptr {
 
-// deafault_delete for single object
+// 20.7.1.1 Default deleters
+
+// 20.7.1.1.2, default_delete
 
 template <typename T>
 class default_delete
@@ -29,7 +31,7 @@ public:
     { delete p; }
 };
 
-// default_delete for array objects with a runtime length
+// 20.7.1.1.3, default_delete<T[]>
 
 template <typename T>
 class default_delete<T[]>

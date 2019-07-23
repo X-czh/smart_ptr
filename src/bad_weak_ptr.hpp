@@ -13,6 +13,8 @@
 
 namespace smart_ptr {
 
+// 20.7.2.1 Class bad_weak_ptr
+
 class bad_weak_ptr : public std::exception {
 public:
     const char* what() noexcept

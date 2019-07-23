@@ -4,15 +4,15 @@
 #define UNIQUE_PTR_HPP 1
 
 #include <cstddef>              /// nullptr_t
-#include <utility>              /// swap
-#include <functional>           /// less
-#include <type_traits>          /// remove_extent
+#include <utility>              /// move, forward, swap
+#include <functional>           /// less, hash
+#include <type_traits>          /// remove_extent, conditional, is_reference
 
 #include "default_delete.hpp"
 
 namespace smart_ptr {
 
-// unique_ptr for single objects
+// 20.7.1.2 unique_ptr for single objects
 
 template<typename T, typename D = default_delete<T>>
 class unique_ptr {
@@ -21,7 +21,7 @@ public:
     using element_type = T;
     using deleter_type = D;
 
-    // Constructors
+    // 20.7.1.2.1, constructors
 
     /// Default constructor, creates a unique_ptr that owns nothing
     constexpr unique_ptr() noexcept = default;
@@ -36,34 +36,48 @@ public:
     { }
 
     /// Takes ownership from a pointer, supplied with a custom deleter
-    explicit unique_ptr(pointer p, deleter_type d) noexcept
+    /// d: a reference to a deleter.
+    unique_ptr(pointer p, 
+        typename std::conditional<std::is_reference<deleter_type>::value,
+	        deleter_type, const deleter_type&>::type d) noexcept
     : _ptr{p}, _deleter{d}
     { }
 
+    /// Takes ownership from a pointer, supplied with a custom deleter
+    /// d: an rvalue reference to a deleter.
+    /// Not permitted if deleter_type is an lvalue reference.
+    unique_ptr(pointer p,
+        typename std::remove_reference<deleter_type>::type&& d) noexcept
+    : _ptr{p}, _deleter{std::move(d)}
+    {
+        static_assert(!std::is_reference<deleter_type>::value,
+		    "rvalue deleter bound to reference");
+    }
+
     /// Move constructor: takes ownership from a unique_ptr of the same type
     unique_ptr(unique_ptr&& up) noexcept
-    : _ptr{up.release()}, _deleter{up.get_deleter()}
+    : _ptr{up.release()}, _deleter{std::forward<deleter_type>(up.get_deleter())}
     { }
 
     /// Move constructor: takes ownership from a unique_ptr of a different type
     template <typename U, typename E>
     unique_ptr(unique_ptr<U, E>&& up) noexcept
-    : _ptr{up.release()}, _deleter{up.get_deleter()}
+    : _ptr{up.release()}, _deleter{std::forward<deleter_type>(up.get_deleter())}
     { }
 
-    // Destructor
-    
+    // 20.7.1.2.2, destructor
+
     /// Invokes the deleter if the stored pointer is not null
     ~unique_ptr() noexcept
     { if (_ptr) _deleter(_ptr); }
 
-    // Assignment
+    // 20.7.1.2.3, assignment
 
     /// Move assignment: takes ownership from a unique_ptr of the same type
     unique_ptr& operator=(unique_ptr&& up) noexcept
     {
-        _deleter = up.get_deleter();
-        _ptr = up.release();
+        reset(up.release());
+	    _deleter = up.get_deleter();
         return *this;
     }
 
@@ -71,8 +85,8 @@ public:
     template <typename U, typename E>
     unique_ptr& operator=(unique_ptr<U, E>&& up) noexcept
     {
-        _deleter = up.get_deleter();
-        _ptr = up.release();
+        reset(up.release());
+	    _deleter = up.get_deleter();
         return *this;
     }
 
@@ -84,7 +98,7 @@ public:
         return *this;
     }
 
-    // Observers
+    // 20.7.1.2.4, observers
 
     /// Dereferences pointer to the managed object
     element_type&
@@ -115,7 +129,7 @@ public:
     explicit operator bool() const noexcept
     { return (_ptr) ? true : false; }
 
-    // Modifiers
+    // 20.7.1.2.5 modifiers
 
     /// Releases ownership to the returned raw pointer
     pointer
@@ -164,7 +178,7 @@ private:
 };
 
 
-// unique_ptr for array objects with a runtime length
+// 20.7.1.3 unique_ptr for array objects with a runtime length
 
 template <typename T, typename D>
 class unique_ptr<T[], D>
@@ -174,7 +188,7 @@ public:
     using element_type = T;
     using deleter_type = D;
 
-    // Constructors
+    // 20.7.1.3.1, constructors
 
     /// Default constructor, creates a unique_ptr that owns nothing
     constexpr unique_ptr() noexcept = default;
@@ -189,28 +203,42 @@ public:
     { }
 
     /// Takes ownership from a pointer, supplied with a custom deleter
-    explicit unique_ptr(pointer p, deleter_type d) noexcept
+    /// d: a reference to a deleter.
+    unique_ptr(pointer p, 
+        typename std::conditional<std::is_reference<deleter_type>::value,
+	        deleter_type, const deleter_type&>::type d) noexcept
     : _ptr{p}, _deleter{d}
     { }
+
+    /// Takes ownership from a pointer, supplied with a custom deleter
+    /// d: an rvalue reference to a deleter.
+    /// Not permitted if deleter_type is an lvalue reference.
+    unique_ptr(pointer p,
+        typename std::remove_reference<deleter_type>::type&& d) noexcept
+    : _ptr{p}, _deleter{std::move(d)}
+    {
+        static_assert(!std::is_reference<deleter_type>::value,
+		    "rvalue deleter bound to reference");
+    }
 
     /// Move constructor: takes ownership from a unique_ptr of the same type
     unique_ptr(unique_ptr&& up) noexcept
     : _ptr{up.release()}, _deleter{up.get_deleter()}
     { }
 
-    // Destructor
+    // destructor
     
     /// Invokes the deleter if the stored pointer is not null
     ~unique_ptr() noexcept
     { if (_ptr) _deleter(_ptr); }
 
-    // Assignment
+    // assignment
 
     /// Move assignment: takes ownership from a unique_ptr of the same type
     unique_ptr& operator=(unique_ptr&& up) noexcept
     {
-        _deleter = up.get_deleter();
-        _ptr = up.release();
+        reset(up.release());
+	    _deleter = up.get_deleter();
         return *this;
     }
 
@@ -222,7 +250,7 @@ public:
         return *this;
     }
 
-    // Observers
+    // 20.7.1.3.2, observers
 
     /// Index operator, dereferencing operators are not provided,
     /// bound range is not checked
@@ -249,7 +277,7 @@ public:
     explicit operator bool() const noexcept
     { return (_ptr) ? true : false; }
 
-    // Modifiers
+    // 20.7.1.3.3 modifiers
 
     /// Releases ownership to the returned raw pointer
     pointer
@@ -298,7 +326,8 @@ private:
     deleter_type _deleter;
 };
 
-// unique_ptr creation
+/* added in C++14 */
+// make_unique: creates a unique pointer that manages a new object
 
 template<typename T>
     struct _Unique_if {
@@ -335,7 +364,7 @@ template<typename T, typename... Args>
     typename _Unique_if<T>::_Known_bound
     make_unique(Args&&...) = delete;
 
-// unique_ptr comparison
+// 20.7.1.4 unique_ptr specialized algorithms
 
 /// Operator == overloading
 template<typename T, typename D,
@@ -445,15 +474,14 @@ template<typename T, typename D>
     operator>=(std::nullptr_t, const unique_ptr<T, D>& up)
     { return !(nullptr < up.get()); }
 
-// unique_ptr specialized algorithms
-
 /// Swaps with another unique_ptr
 template<typename T, typename D>
     inline void
     swap(unique_ptr<T, D>& up1, unique_ptr<T, D>& up2)
     { up1.swap(up2); }
 
-// unique_ptr I/O
+/* added in C++20 */
+/// unique_ptr I/O
 
 template<class E, class T, class Y>
     std::basic_ostream<E, T>&
@@ -466,6 +494,8 @@ template<class E, class T, class Y>
 } // namespace smart_ptr
 
 namespace std {
+
+// 20.7.2.6 Smart pointer hash support
 
 // Template specialization of std::hash for smart_ptr::unique_ptr<T>
 
