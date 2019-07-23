@@ -25,6 +25,7 @@
 // using std::weak_ptr;
 // using std::make_shared;
 // using std::default_delete;
+// using std::get_deleter;
 
 #include "smart_ptr.hpp"
 using smart_ptr::unique_ptr;
@@ -33,7 +34,6 @@ using smart_ptr::weak_ptr;
 using smart_ptr::default_delete;
 using smart_ptr::make_shared;
 using smart_ptr::get_deleter;
-
 
 void close_file(std::FILE* fp) { std::fclose(fp); }
 
@@ -135,9 +135,10 @@ int main()
         shared_ptr<int> p1 (nullptr); // use_count = 0
         shared_ptr<int> p2 (nullptr, default_delete<int>()); // use_count = 1 with custom deleter
         shared_ptr<int> p3 (new int);
-        shared_ptr<int> p4 (new int, default_delete<int>());
-        shared_ptr<int> p5 (new int, [](int* p){delete p;}, std::allocator<int>());
-        shared_ptr<int> p6 (p5);
+        shared_ptr<int> p4 (new int, [](int* p){delete p;});
+        /* Custom allocator support is not implemented. */
+        // shared_ptr<int> p5 (new int, [](int* p){delete p;}, std::allocator<int>());
+        shared_ptr<int> p6 (p4);
         shared_ptr<int> p7 (std::move(p6));
         shared_ptr<int> p8 (unique_ptr<int>(new int));
         shared_ptr<C> obj (new C);
@@ -149,7 +150,8 @@ int main()
         std::cout << "p2: " << p2.use_count() << '\n';
         std::cout << "p3: " << p3.use_count() << '\n';
         std::cout << "p4: " << p4.use_count() << '\n';
-        std::cout << "p5: " << p5.use_count() << '\n';
+        /* Custom allocator support is not implemented. */
+        // std::cout << "p5: " << p5.use_count() << '\n';
         std::cout << "p6: " << p6.use_count() << '\n';
         std::cout << "p7: " << p7.use_count() << '\n';
         std::cout << "p8: " << p8.use_count() << '\n';

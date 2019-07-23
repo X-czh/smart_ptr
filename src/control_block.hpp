@@ -3,7 +3,7 @@
 #ifndef CONTROL_BLOCK_HPP
 #define CONTROL_BLOCK_HPP 1
 
-#include <memory>       // addressof
+#include <memory>       // allocator, addressof
 #include <atomic>       // atomic
 
 #include "default_delete.hpp"
@@ -33,6 +33,13 @@ public:
 };
 
 // control block for reference counting of shared_ptr and weak_ptr
+
+/**
+ * NOT implemented: custom allocator support.
+ * 
+ * The allocator is intended to be used to allocate and deallocate
+ *  internal shared_ptr details, not the object.
+ */
 
 template<typename T,
          typename D = default_delete<T>, 

@@ -4,7 +4,7 @@
 #define SHARED_PTR_HPP 1
 
 #include <cstddef>      /// nullptr_t
-#include <utility>      /// swap
+#include <utility>      /// move, forward, swap
 #include <functional>   /// less, hash
 #include <iostream>     /// basic_ostream
 #include <memory>       /// bad_weak_ptr
@@ -21,7 +21,15 @@ namespace smart_ptr {
 template<typename T, typename D> class unique_ptr;
 template<typename T> class weak_ptr;
 
+// 20.7.2.2 Class template shared_ptr
 // shared_ptr for single object
+
+/**
+ * NOT implemented: custom allocator support.
+ * 
+ * The allocator is intended to be used to allocate and deallocate
+ *  internal shared_ptr details, not the object.
+ */
 
 template<typename T>
 class shared_ptr {
@@ -36,8 +44,9 @@ public:
     friend D* get_deleter(const shared_ptr<U>&) noexcept;
 
     using element_type = T;
+    using weak_type = weak_ptr<T>; /* added in C++17 */
 
-    // Constructors
+    // 20.7.2.2.1, constructors
 
     /// Default constructor, creates a shared_ptr with no managed object
     /// Postconditions: use_count() == 0 && get() == 0.
@@ -67,17 +76,14 @@ public:
     template<typename U, typename D>
     shared_ptr(U* p, D d)
     : _ptr{p},
-      _control_block{new detail::control_block<U, D>{p, d}}
+      _control_block{new detail::control_block<U, D>{p, std::move(d)}}
     { }
 
     /// Constructs a shared_ptr with p as the pointer to the managed object,
     ///     supplied with custom deleter and allocator
     /// Postconditions: use_count() == 1 && get() == p.
     template<typename U, typename D, typename A>
-    shared_ptr(U* p, D d, A a)
-    : _ptr{p},
-      _control_block{new detail::control_block<U, D, A>{p, d, a}}
-    { }
+    shared_ptr(U* p, D d, A a) = delete;
 
     /// Constructs a shared_ptr with no managed object,
     ///     supplied with custom deleter
@@ -85,17 +91,14 @@ public:
     template<typename D>
     shared_ptr(std::nullptr_t p, D d)
     : _ptr{nullptr},
-      _control_block{new detail::control_block<T, D>{p, d}}
+      _control_block{new detail::control_block<T, D>{p, std::move(d)}}
     { }
 
     /// Constructs a shared_ptr with no managed object,
     ///     supplied with custom deleter and allocator
     /// Postconditions: use_count() == 1 && get() == 0.
     template<typename D, typename A>
-    shared_ptr(std::nullptr_t p, D d, A a)
-    : _ptr{nullptr},
-      _control_block{new detail::control_block<T, D, A>{p, d, a}}
-    { }
+    shared_ptr(std::nullptr_t p, D d, A a) = delete;
 
     /// Aliasing constructor: constructs a shared_ptr instance that
     ///     stores p and shares ownership with sp
@@ -165,12 +168,12 @@ public:
     : shared_ptr{up.release(), up.get_deleter()}
     { }
 
-    // Destructor
+    // 20.7.2.2.2, destructor
 
     ~shared_ptr()
     { if (_control_block) _control_block->dec_ref(); }
 
-    // Assignment
+    // 20.7.2.2.3, assignment
 
     /// Copy assignment
     shared_ptr&
@@ -215,50 +218,7 @@ public:
         return *this;
     }
 
-    // Observers
-
-    /// Gets the stored pointer
-    element_type*
-    get() const noexcept
-    { return _ptr; }
-
-    /// Dereferences pointer to the managed object
-    element_type&
-    operator*() const noexcept
-    { return *_ptr; }
-
-    /// Dereferences pointer to the managed object
-    element_type* 
-    operator->() const noexcept
-    { return _ptr; }
-
-    /// Gets use_count
-    long
-    use_count() const noexcept
-    { return (_control_block) ? _control_block->use_count() : 0; }
-
-    /// Checks if use_count == 1
-    bool
-    unique() const noexcept
-    { return (_control_block) ? _control_block->unique() : false; }
-
-    /// Checks if there is a managed object
-    explicit operator bool() const noexcept
-    { return (_ptr) ? true : false; }
-
-    /// Checks whether this shared_ptr precedes other in owner-based order
-    /// Implemented by comparing the address of control_block
-    template<typename U>
-    bool owner_before(shared_ptr<U> const& sp) const
-    { return std::less<>(_control_block, sp._control_block); }
-
-    /// Checks whether this shared_ptr precedes other in owner-based order
-    /// Implemented by comparing the address of control_block
-    template<class U>
-    bool owner_before(weak_ptr<U> const& wp) const
-    { return std::less<>(_control_block, wp._control_block); }
-
-    // Modifiers
+    // 20.7.2.2.4, modifiers
 
     /// Exchanges the contents of *this and sp
     void
@@ -291,26 +251,70 @@ public:
     ///     supplied with custom deleter and allocator
     template<typename U, typename D, typename A>
     void
-    reset(U* p, D d, A a)
-    { shared_ptr{p, d, a}.swap(*this); }
+    reset(U* p, D d, A a) = delete;
+
+    // 20.7.2.2.5, observers
+
+    /// Gets the stored pointer
+    element_type*
+    get() const noexcept
+    { return _ptr; }
+
+    /// Dereferences pointer to the managed object
+    element_type&
+    operator*() const noexcept
+    { return *_ptr; }
+
+    /// Dereferences pointer to the managed object
+    element_type* 
+    operator->() const noexcept
+    { return _ptr; }
+
+    /// Gets use_count
+    long
+    use_count() const noexcept
+    { return (_control_block) ? _control_block->use_count() : 0; }
+
+    /* deprecated in C++17, removed in C++20 */
+    /// Checks if use_count == 1
+    bool
+    unique() const noexcept
+    { return (_control_block) ? _control_block->unique() : false; }
+
+    /// Checks if there is a managed object
+    explicit operator bool() const noexcept
+    { return (_ptr) ? true : false; }
+
+    /// Checks whether this shared_ptr precedes other in owner-based order
+    /// Implemented by comparing the address of control_block
+    template<typename U>
+    bool owner_before(shared_ptr<U> const& sp) const
+    { return std::less<>(_control_block, sp._control_block); }
+
+    /// Checks whether this shared_ptr precedes other in owner-based order
+    /// Implemented by comparing the address of control_block
+    template<class U>
+    bool owner_before(weak_ptr<U> const& wp) const
+    { return std::less<>(_control_block, wp._control_block); }
 
 private:
     element_type* _ptr;
     detail::control_block_base* _control_block;
 };
 
-// shared_ptr creation
+// 20.7.2.2.6, shared_ptr creation
 
 /// Creates a shared_ptr that manages a new object
 template<typename T, typename... Args>
-    shared_ptr<T> make_shared(Args&&... args)
+    inline shared_ptr<T>
+    make_shared(Args&&... args)
     { return shared_ptr<T>{new T{std::forward<Args>(args)...}}; }
 
 template<typename T, typename A, typename... Args>
-    shared_ptr<T> allocate_shared(const A& a, Args&&... args)
-    { // TODO }
+    inline shared_ptr<T>
+    allocate_shared(const A& a, Args&&... args) = delete;
 
-// shared_ptr comparison
+// 20.7.2.2.7, shared_ptr comparisons
 
 /// Operator == overloading
 template<typename T, typename U>
@@ -414,7 +418,7 @@ template<typename T>
     operator>=(std::nullptr_t, const shared_ptr<T>& sp)
     { return !(nullptr < sp.get()); }
 
-// shared_ptr specialized algorithms
+// 20.7.2.2.8, shared_ptr specialized algorithms
 
 /// Swaps with another shared_ptr
 template<typename T>
@@ -422,17 +426,54 @@ template<typename T>
     swap(shared_ptr<T>& sp1, shared_ptr<T>& sp2)
     { sp1.swap(sp2); }
 
-// get_deleter
+// 20.7.2.2.9, shared_ptr casts
+
+template<typename T, typename U>
+    inline shared_ptr<T>
+    static_pointer_cast(const shared_ptr<U>& sp) noexcept
+    {
+        using _Sp = shared_ptr<T>;
+        return _Sp(sp, static_cast<typename _Sp::element_type*>(sp.get()));
+    }
+
+template<typename T, typename U>
+    inline shared_ptr<T>
+    const_pointer_cast(const shared_ptr<U>& sp) noexcept
+    {
+        using _Sp = shared_ptr<T>;
+        return _Sp(sp, const_cast<typename _Sp::element_type*>(sp.get()));
+    }
+
+template<typename T, typename U>
+    inline shared_ptr<T>
+    dynamic_pointer_cast(const shared_ptr<U>& sp) noexcept
+    {
+        using _Sp = shared_ptr<T>;
+        if (auto* _p = dynamic_cast<typename _Sp::element_type*>(sp.get()))
+            return _Sp(sp, _p);
+        return _Sp();
+    }
+
+/* added in C++17 */
+template<typename T, typename U>
+    inline shared_ptr<T>
+    reinterpret_pointer_cast(const shared_ptr<U>& sp) noexcept
+    {
+        using _Sp = shared_ptr<T>;
+        return _Sp(sp, reinterpret_cast<typename _Sp::element_type*>(sp.get()));
+}
+
+// 20.7.2.2.10, shared_ptr get_deleter
 
 template<typename D, typename T>
-    D*
+    inline D*
     get_deleter(const shared_ptr<T>& sp) noexcept
     { return reinterpret_cast<D*>(sp._control_block->get_deleter()); }
 
-// shared_ptr I/O
+// 20.7.2.2.11, shared_ptr I/O
 
 template<class E, class T, class Y>
-    std::basic_ostream<E, T>&
+    inline std::basic_ostream<E, T>&
     operator<<(std::basic_ostream<E, T>& os, const shared_ptr<Y>& sp)
     {
         os << sp.get();
@@ -442,6 +483,8 @@ template<class E, class T, class Y>
 } // namespace smart_ptr
 
 namespace std {
+
+// 20.7.2.6 Smart pointer hash support
 
 // Template specialization of std::hash for smart_ptr::shared_ptr<T>
 
