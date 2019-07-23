@@ -461,7 +461,7 @@ template<typename T, typename U>
     {
         using _Sp = shared_ptr<T>;
         return _Sp(sp, reinterpret_cast<typename _Sp::element_type*>(sp.get()));
-}
+    }
 
 // 20.7.2.2.10, shared_ptr get_deleter
 
