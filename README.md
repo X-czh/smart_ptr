@@ -41,7 +41,7 @@ A list of the extra features and the removed ones are given below. Notes regardi
 
 ## Requirement
 
-To include, simply include "smart_ptr.hpp", C++14 required.
+To include, simply include "smart_ptr.hpp", C++14 required. All names are defined in the smart_ptr namespace except for _control_block_base and _control_block, which are defined in the smart_ptr::detail namespace.
 
 To run the demo, run Makefile, pthread support required.
 
