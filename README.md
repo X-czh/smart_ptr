@@ -25,7 +25,7 @@ It includes the following smart pointers and helper classes:
 | enable_shared_from_this | allows an object to create a shared_ptr referring to itself |
 | owner_less | provides mixed-type owner-based ordering of shared and weak pointers |
 
-A list of the extra features and the removed ones are given below. Notes regarding the status of those features in more recent C++ versions are given in brackets. For example, I do not check whether a given deleter is copy constructable
+A list of the extra features and the removed ones are given below. Notes regarding the status of those features in more recent C++ versions are given in brackets.
 
 ### Extra features
 
