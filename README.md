@@ -30,9 +30,9 @@ A list of the extra features and the removed ones are given below. Notes regardi
 ### Extra features
 
 * make_unique (added in C++14)
-* operator<< for unique_ptr (added in C++20)
 * array type support for shared_ptr (added in C++17)
 * reinterpret_pointer_cast for shared_ptr (added in C++17)
+* operator<< for unique_ptr (added in C++20)
 
 ### Removed features
 
@@ -70,6 +70,6 @@ class control_block : public _control_block_base {
 };
 ```
 
-## Notes
+## Note
 
 * Since the access to ISO/IEC documents are not public, I refered to [N3337](https://github.com/cplusplus/draft/blob/master/papers/n3337.pdf), which is the same as the C++11 standard but with a few typographical corrections.
