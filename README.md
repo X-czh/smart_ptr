@@ -31,8 +31,8 @@ A list of the extra features and the removed ones are given below. Notes regardi
 
 * make_unique (added in C++14)
 * operator<< for unique_ptr (added in C++20)
+* array type support for shared_ptr (added in C++17)
 * reinterpret_pointer_cast for shared_ptr (added in C++17)
-<!-- * support for array type of shared_ptr (added in C++17) -->
 
 ### Removed features
 

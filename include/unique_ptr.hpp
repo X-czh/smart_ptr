@@ -3,11 +3,12 @@
 #ifndef UNIQUE_PTR_HPP
 #define UNIQUE_PTR_HPP 1
 
-#include <cstddef>              /// nullptr_t
+#include <cstddef>              /// nullptr_t, size_t
+#include <cassert>              /// assert
 #include <utility>              /// move, forward, swap
 #include <functional>           /// less, hash
 #include <type_traits>          /// remove_extent, conditional, is_reference
-                                    /// common_type 
+                                    /// common_type
 
 #include "default_delete.hpp"
 
@@ -104,12 +105,18 @@ public:
     /// Dereferences pointer to the managed object
     element_type&
     operator*() const noexcept
-    { return *_ptr; }
+    {
+        assert(_ptr != nullptr);
+        return *_ptr;
+    }
 
     /// Dereferences pointer to the managed object
     pointer 
     operator->() const noexcept
-    { return _ptr; }
+    {
+        assert(_ptr != nullptr);
+        return _ptr;
+    }
 
     /// Gets the stored pointer
     pointer
@@ -256,8 +263,11 @@ public:
     /// Index operator, dereferencing operators are not provided,
     /// bound range is not checked
     element_type&
-    operator[](size_t i) const noexcept
-    { return _ptr[i]; }
+    operator[](std::size_t i) const noexcept
+    {
+        assert(_ptr != nullptr);
+        return _ptr[i];
+    }
 
     /// Gets the stored pointer
     pointer
@@ -520,10 +530,10 @@ namespace std {
 
 template<typename T>
 struct hash<smart_ptr::unique_ptr<T>> {
-    using result_type = size_t;
+    using result_type = std::size_t;
     using argument_type = smart_ptr::unique_ptr<T>;
 
-    size_t
+    std::size_t
     operator()(const smart_ptr::unique_ptr<T>& up) const {
         return hash<typename smart_ptr::unique_ptr<T>::element_type*>()(up.get());
     }

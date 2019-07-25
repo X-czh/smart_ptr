@@ -3,11 +3,12 @@
 #ifndef SHARED_PTR_HPP
 #define SHARED_PTR_HPP 1
 
-#include <cstddef>      /// nullptr_t
+#include <cstddef>      /// nullptr_t, size_t, ptrdiff_t
 #include <utility>      /// move, forward, swap
 #include <functional>   /// less, hash
 #include <iostream>     /// basic_ostream
-#include <type_traits>  /// common_type
+#include <type_traits>  /// extent, remove_extent, is_array, is_void
+                            /// common_type
 
 #include "control_block.hpp"
 #include "bad_weak_ptr.hpp"
@@ -19,10 +20,91 @@ namespace smart_ptr {
 // Forward declarations
 
 template<typename T, typename D> class unique_ptr;
+template<typename T> class shared_ptr;
 template<typename T> class weak_ptr;
 
+// shared_ptr_access general template
+// Defines operator*, operator-> and operator[]
+// for T not array or cv void
+
+template<typename T,
+         bool = std::is_array<T>::value,
+         bool = std::is_void<T>::value>
+class shared_ptr_access {
+public:
+    using element_type = T;
+
+    /// Dereferences pointer to the managed object
+    element_type&
+    operator*() const noexcept
+    {
+        assert(_get() != nullptr);
+        return *_get();
+    }
+
+    /// Dereferences pointer to the managed object
+    element_type* 
+    operator->() const noexcept
+    {
+        assert(_get() != nullptr);
+        return _get();
+    }
+
+private:
+    element_type*
+    _get() const noexcept
+    { return static_cast<const shared_ptr<T>*>(this)->get(); }
+};
+
+// specialization of shared_ptr_access for T array type
+// Defines operator[] for shared_ptr<T[]> and shared_ptr<T[N]>
+
+template<typename T>
+class shared_ptr_access<T, true, false> {
+public:
+    using element_type = typename std::remove_extent<T>::type;
+
+    /// Index operator, dereferencing operators are not provided
+    element_type* 
+    operator[](std::ptrdiff_t i) const noexcept
+    {
+        assert(_get() != nullptr);
+	    static_assert(!std::extent<T>::value || i < std::extent<T>::value);
+        return _get()[i];
+    }
+
+private:
+    element_type*
+    _get() const noexcept
+    { return static_cast<const shared_ptr<T>*>(this)->get(); }
+
+};
+
+// specialization of shared_ptr_access for T cv void type
+// Defines operator-> for shared_ptr<cv void>
+
+template<typename T>
+class shared_ptr_access<T, false, true> {
+public:
+    using element_type = T;
+
+    /// Dereferences pointer to the managed object, operator* is not provided
+    element_type* 
+    operator->() const noexcept
+    {
+        assert(_get() != nullptr);
+        return _get();
+    }
+
+private:
+    element_type*
+    _get() const noexcept
+    { return static_cast<const shared_ptr<T>*>(this)->get(); }
+};
+
 // 20.7.2.2 Class template shared_ptr
-// shared_ptr for single object
+
+/* supports shared_ptr<T[]> and shared_ptr<T[N]>: added in C++17 */
 
 /**
  * NOT implemented: custom allocator support.
@@ -32,7 +114,7 @@ template<typename T> class weak_ptr;
  */
 
 template<typename T>
-class shared_ptr {
+class shared_ptr : public shared_ptr_access<T> {
 public:
     template<typename U>
     friend class shared_ptr;
@@ -43,7 +125,7 @@ public:
     template<typename D, typename U>
     friend D* get_deleter(const shared_ptr<U>&) noexcept;
 
-    using element_type = T;
+    using element_type = typename shared_ptr_access<T>::element_type;
     using weak_type = weak_ptr<T>; /* added in C++17 */
 
     // 20.7.2.2.1, constructors
@@ -260,15 +342,17 @@ public:
     get() const noexcept
     { return _ptr; }
 
-    /// Dereferences pointer to the managed object
-    element_type&
-    operator*() const noexcept
-    { return *_ptr; }
+    /* implemented in shared_ptr_access<T> */
 
-    /// Dereferences pointer to the managed object
-    element_type* 
-    operator->() const noexcept
-    { return _ptr; }
+    // /// Dereferences pointer to the managed object
+    // element_type&
+    // operator*() const noexcept
+    // { return *_ptr; }
+
+    // /// Dereferences pointer to the managed object
+    // element_type* 
+    // operator->() const noexcept
+    // { return _ptr; }
 
     /// Gets use_count
     long
@@ -514,10 +598,10 @@ namespace std {
 
 template<typename T>
 struct hash<smart_ptr::shared_ptr<T>> {
-    using result_type = size_t;
+    using result_type = std::size_t;
     using argument_type = smart_ptr::shared_ptr<T>;
 
-    size_t
+    std::size_t
     operator()(const smart_ptr::shared_ptr<T>& sp) const {
         return hash<typename smart_ptr::shared_ptr<T>::element_type*>()(sp.get());
     }

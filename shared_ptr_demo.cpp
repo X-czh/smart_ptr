@@ -7,6 +7,8 @@
  *      https://en.cppreference.com/w/cpp/memory/unique_ptr,
  *  and cplusplus.com's demo code of std::shared_ptr constructors:
  *      http://www.cplusplus.com/reference/memory/shared_ptr/shared_ptr/
+ *  and 陈硕's answer on Zhihu regarding owner_before:
+ *      https://www.zhihu.com/question/24816143/answer/29080141
  */
 
 #include <cstdio>
@@ -80,9 +82,6 @@ void thr(shared_ptr<Base> p)
                   << "  lp.get() = " << lp.get()
                   << ", lp.use_count() = " << lp.use_count() << '\n';
     }
-}
-void deletees(D*) {
-
 }
 
 int main()
@@ -173,6 +172,24 @@ int main()
                 << ", p.use_count() = " << p.use_count() << '\n';
         t1.join(); t2.join(); t3.join();
         std::cout << "All threads completed, the last one deleted Derived\n";
+    }
+
+    std::cout << "\nshared_ptr<void> and owner_before demo\n";
+    {
+        class BaseA { int a; };
+        class BaseB { double b; };
+        class Derived: public BaseA, public BaseB {};
+        
+        shared_ptr<Derived> pd(new Derived);
+        shared_ptr<BaseB> pb(pd);
+        printf("%p %p\n", pd.get(), pb.get());
+        printf("%d %d\n", pd < pb, pb < pd);  // 0 0
+        printf("%d %d\n", pd.owner_before(pb), pb.owner_before(pd));  // 0 0
+
+        shared_ptr<void> p0(pd), p1(pb);
+        printf("%p %p\n", p0.get(), p1.get());
+        printf("%d %d\n", p0 < p1, p1 < p0);  // 1 0
+        printf("%d %d\n", p0.owner_before(p1), p1.owner_before(p0));  // 0 0
     }
 
     std::cout << "\nGet deleter demo\n";

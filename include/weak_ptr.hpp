@@ -3,6 +3,8 @@
 #ifndef WEAK_PTR_HPP
 #define WEAK_PTR_HPP 1
 
+#include <type_traits>      // remove_extent
+
 #include "control_block.hpp"
 #include "shared_ptr.hpp"
 
@@ -23,7 +25,7 @@ public:
     template<typename U>
     friend class weak_ptr;
 
-    using element_type = T;
+    using element_type = typename std::remove_extent<T>::type;
 
     // 20.7.2.3.1, constructors:
 
