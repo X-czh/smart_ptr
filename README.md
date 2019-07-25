@@ -41,7 +41,7 @@ A list of the extra features and the removed ones are given below. Notes regardi
 
 ## Requirement
 
-To include, simply include "smart_ptr.hpp", C++14 required. All names are defined in the smart_ptr namespace except for _control_block_base and _control_block, which are defined in the smart_ptr::detail namespace.
+To include, simply include "smart_ptr.hpp", C++11 required. All names are defined in the smart_ptr namespace except for _control_block_base and _control_block, which are defined in the smart_ptr::detail namespace.
 
 To run the demo, run Makefile, pthread support required.
 
@@ -73,5 +73,3 @@ class control_block : public _control_block_base {
 ## Notes
 
 * Since the access to ISO/IEC documents are not public, I refered to [N3337](https://github.com/cplusplus/draft/blob/master/papers/n3337.pdf), which is the same as the C++11 standard but with a few typographical corrections.
-
-* The only C++14 feature I used is std::less<> that leaves the parameter types and return type to be deduced.

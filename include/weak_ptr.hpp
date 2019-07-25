@@ -124,13 +124,19 @@ public:
     /// Implemented by comparing the address of control_block
     template<typename U>
     bool owner_before(shared_ptr<U> const& sp) const
-    { return std::less<>(_control_block, sp._control_block); }
+    {
+        return std::less<detail::control_block_base*>()
+            (_control_block, sp._control_block);
+    }
 
     /// Checks whether this shared_ptr precedes other in owner-based order
     /// Implemented by comparing the address of control_block
     template<class U>
     bool owner_before(weak_ptr<U> const& wp) const
-    { return std::less<>(_control_block, wp._control_block); }
+    {
+        return std::less<detail::control_block_base*>()
+            (_control_block, wp._control_block);
+    }
 
 private:
     element_type* _ptr;

@@ -7,6 +7,7 @@
 #include <utility>              /// move, forward, swap
 #include <functional>           /// less, hash
 #include <type_traits>          /// remove_extent, conditional, is_reference
+                                    /// common_type 
 
 #include "default_delete.hpp"
 
@@ -408,17 +409,27 @@ template<typename T, typename D,
     inline bool
     operator<(const unique_ptr<T, D>& up1,
                const unique_ptr<U, E>& up2)
-    { return std::less<>(up1.get(), up2.get()); }
+    {
+        using _CT = typename std::common_type<
+            typename unique_ptr<T, D>::pointer,
+            typename unique_ptr<U, E>::pointer>::type;
+        return std::less<_CT>()(up1.get(), up2.get()); }
 
 template<typename T, typename D>
     inline bool
     operator<(const unique_ptr<T, D>& up, std::nullptr_t)
-    { return std::less<>(up.get(), nullptr); }
+    {
+        return std::less<typename unique_ptr<T, D>::pointer>()
+            (up.get(), nullptr);
+    }
 
 template<typename T, typename D>
     inline bool
     operator<(std::nullptr_t, const unique_ptr<T, D>& up)
-    { return std::less<>(nullptr, up.get()); }
+    {
+        return std::less<typename unique_ptr<T, D>::pointer>()
+            (nullptr, up.get());
+    }
 
 /// Operator <= overloading
 template<typename T, typename D,

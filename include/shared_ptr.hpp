@@ -7,7 +7,7 @@
 #include <utility>      /// move, forward, swap
 #include <functional>   /// less, hash
 #include <iostream>     /// basic_ostream
-#include <memory>       /// bad_weak_ptr
+#include <type_traits>  /// common_type
 
 #include "control_block.hpp"
 #include "bad_weak_ptr.hpp"
@@ -289,13 +289,19 @@ public:
     /// Implemented by comparing the address of control_block
     template<typename U>
     bool owner_before(shared_ptr<U> const& sp) const
-    { return std::less<>(_control_block, sp._control_block); }
+    {
+        return std::less<detail::control_block_base*>()
+            (_control_block, sp._control_block);
+    }
 
     /// Checks whether this shared_ptr precedes other in owner-based order
     /// Implemented by comparing the address of control_block
     template<class U>
     bool owner_before(weak_ptr<U> const& wp) const
-    { return std::less<>(_control_block, wp._control_block); }
+    {
+        return std::less<detail::control_block_base*>()
+            (_control_block, wp._control_block);
+    }
 
 private:
     element_type* _ptr;
@@ -355,17 +361,27 @@ template<typename T, typename U>
     inline bool
     operator<(const shared_ptr<T>& sp1,
                const shared_ptr<U>& sp2)
-    { return std::less<>(sp1.get(), sp2.get()); }
+    {
+        using _Tp_elt = typename shared_ptr<T>::element_type; 
+        using _Up_elt = typename shared_ptr<U>::element_type; 
+        using _CT = typename std::common_type<_Tp_elt*, _Up_elt*>::type;
+        return std::less<_CT>()(sp1.get(), sp2.get());
+    }
 
 template<typename T>
     inline bool
     operator<(const shared_ptr<T>& sp, std::nullptr_t)
-    { return std::less<>(sp.get(), nullptr); }
+    {
+        using _Tp_elt = typename shared_ptr<T>::element_type;
+        return std::less<_Tp_elt*>()(sp.get(), nullptr);
+    }
 
 template<typename T>
     inline bool
     operator<(std::nullptr_t, const shared_ptr<T>& sp)
-    { return std::less<>(nullptr, sp.get()); }
+    {
+        using _Tp_elt = typename shared_ptr<T>::element_type;
+        return std::less<_Tp_elt*>()(nullptr, sp.get()); }
 
 /// Operator <= overloading
 template<typename T, typename U>
