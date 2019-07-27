@@ -3,13 +3,13 @@
 #ifndef UNIQUE_PTR_HPP
 #define UNIQUE_PTR_HPP 1
 
-#include <cstddef>              /// nullptr_t, size_t
-#include <cassert>              /// assert
-#include <utility>              /// move, forward, swap
-#include <functional>           /// less, hash
-#include <type_traits>          /// remove_extent, conditional, is_reference
-                                    /// common_type
+#include <cstddef>      /// size_t, nullptr_t
+#include <cassert>      /// assert
+#include <utility>      /// move, forward, swap
+#include <functional>   /// less, hash
+#include <type_traits>  /// remove_extent, conditional, is_reference, common_type
 
+#include "ptr.hpp"
 #include "default_delete.hpp"
 
 namespace smart_ptr {
@@ -34,7 +34,7 @@ public:
 
     /// Takes ownership from a pointer
     explicit unique_ptr(pointer p) noexcept
-    : _ptr{p}
+    : _impl{p}
     { }
 
     /// Takes ownership from a pointer, supplied with a custom deleter
@@ -42,7 +42,7 @@ public:
     unique_ptr(pointer p, 
         typename std::conditional<std::is_reference<deleter_type>::value,
 	        deleter_type, const deleter_type&>::type d) noexcept
-    : _ptr{p}, _deleter{d}
+    : _impl{p, d}
     { }
 
     /// Takes ownership from a pointer, supplied with a custom deleter
@@ -50,7 +50,7 @@ public:
     /// Not permitted if deleter_type is an lvalue reference.
     unique_ptr(pointer p,
         typename std::remove_reference<deleter_type>::type&& d) noexcept
-    : _ptr{p}, _deleter{std::move(d)}
+    : _impl{p, std::move(d)}
     {
         static_assert(!std::is_reference<deleter_type>::value,
 		    "rvalue deleter bound to reference");
@@ -58,20 +58,24 @@ public:
 
     /// Move constructor: takes ownership from a unique_ptr of the same type
     unique_ptr(unique_ptr&& up) noexcept
-    : _ptr{up.release()}, _deleter{std::forward<deleter_type>(up.get_deleter())}
+    : _impl{up.release(), std::forward<deleter_type>(up.get_deleter())}
     { }
 
     /// Move constructor: takes ownership from a unique_ptr of a different type
     template <typename U, typename E>
     unique_ptr(unique_ptr<U, E>&& up) noexcept
-    : _ptr{up.release()}, _deleter{std::forward<deleter_type>(up.get_deleter())}
+    : _impl{up.release(), std::forward<deleter_type>(up.get_deleter())}
     { }
 
     // 20.7.1.2.2, destructor
 
     /// Invokes the deleter if the stored pointer is not null
     ~unique_ptr() noexcept
-    { if (_ptr) _deleter(_ptr); }
+    {
+        auto _ptr = _impl._impl_ptr();
+        auto& _deleter = _impl._impl_deleter();
+        if (_ptr) _deleter(_ptr);
+    }
 
     // 20.7.1.2.3, assignment
 
@@ -79,6 +83,7 @@ public:
     unique_ptr& operator=(unique_ptr&& up) noexcept
     {
         reset(up.release());
+        auto& _deleter = _impl._impl_deleter();
 	    _deleter = up.get_deleter();
         return *this;
     }
@@ -88,6 +93,7 @@ public:
     unique_ptr& operator=(unique_ptr<U, E>&& up) noexcept
     {
         reset(up.release());
+        auto& _deleter = _impl._impl_deleter();
 	    _deleter = up.get_deleter();
         return *this;
     }
@@ -106,6 +112,7 @@ public:
     element_type&
     operator*() const noexcept
     {
+        auto _ptr = _impl._impl_ptr();
         assert(_ptr != nullptr);
         return *_ptr;
     }
@@ -114,6 +121,7 @@ public:
     pointer 
     operator->() const noexcept
     {
+        auto _ptr = _impl._impl_ptr();
         assert(_ptr != nullptr);
         return _ptr;
     }
@@ -121,21 +129,21 @@ public:
     /// Gets the stored pointer
     pointer
     get() const noexcept
-    { return _ptr; }
+    { return _impl._impl_ptr(); }
 
     /// Gets a reference to the stored deleter
     deleter_type&
     get_deleter() noexcept
-    { return _deleter; }
+    { return _impl._impl_deleter(); }
 
     /// Gets a const reference to the stored deleter
     const deleter_type&
     get_deleter() const noexcept
-    { return _deleter; }
+    { return _impl._impl_deleter(); }
 
     /// Checks if there is an associated managed object
     explicit operator bool() const noexcept
-    { return (_ptr) ? true : false; }
+    { return (_impl._impl_ptr()) ? true : false; }
 
     // 20.7.1.2.5 modifiers
 
@@ -143,6 +151,7 @@ public:
     pointer
     release() noexcept
     {
+        auto& _ptr = _impl._impl_ptr();
         pointer cp = _ptr;
         _ptr = nullptr;
         return cp;
@@ -152,6 +161,8 @@ public:
     void
     reset(pointer p) noexcept
     {
+        auto& _ptr = _impl._impl_ptr();
+        auto& _deleter = _impl._impl_deleter();
         if (_ptr) _deleter(_ptr); 
         _ptr = p;
     }
@@ -160,6 +171,8 @@ public:
     void
     reset() noexcept
     {
+        auto& _ptr = _impl._impl_ptr();
+        auto& _deleter = _impl._impl_deleter();
         if (_ptr) _deleter(_ptr);
         _ptr = pointer{}; /// probably nullptr
     }
@@ -169,8 +182,7 @@ public:
     swap(unique_ptr& up) noexcept
     {
         using std::swap;
-        swap(_ptr, up._ptr);
-        swap(_deleter, up._deleter);
+        swap(_impl, up._impl);
     }
     
     // Disable copy from lvalue
@@ -180,9 +192,9 @@ public:
 
     /// Disables copy assignment
     unique_ptr& operator=(const unique_ptr&) = delete;
+
 private:
-    pointer _ptr;
-    deleter_type _deleter;
+    detail::Ptr<T, D> _impl;
 };
 
 
@@ -207,7 +219,7 @@ public:
 
     /// Takes ownership from a pointer
     explicit unique_ptr(pointer p) noexcept
-    : _ptr{p}
+    : _impl{p}
     { }
 
     /// Takes ownership from a pointer, supplied with a custom deleter
@@ -215,7 +227,7 @@ public:
     unique_ptr(pointer p, 
         typename std::conditional<std::is_reference<deleter_type>::value,
 	        deleter_type, const deleter_type&>::type d) noexcept
-    : _ptr{p}, _deleter{d}
+    : _impl{p, d}
     { }
 
     /// Takes ownership from a pointer, supplied with a custom deleter
@@ -223,7 +235,7 @@ public:
     /// Not permitted if deleter_type is an lvalue reference.
     unique_ptr(pointer p,
         typename std::remove_reference<deleter_type>::type&& d) noexcept
-    : _ptr{p}, _deleter{std::move(d)}
+    : _impl{p, std::move(d)}
     {
         static_assert(!std::is_reference<deleter_type>::value,
 		    "rvalue deleter bound to reference");
@@ -231,14 +243,18 @@ public:
 
     /// Move constructor: takes ownership from a unique_ptr of the same type
     unique_ptr(unique_ptr&& up) noexcept
-    : _ptr{up.release()}, _deleter{up.get_deleter()}
+    : _impl{up.release(), up.get_deleter()}
     { }
 
     // destructor
     
     /// Invokes the deleter if the stored pointer is not null
     ~unique_ptr() noexcept
-    { if (_ptr) _deleter(_ptr); }
+    {
+        auto _ptr = _impl._impl_ptr();
+        auto& _deleter = _impl._impl_deleter();
+        if (_ptr) _deleter(_ptr);
+    }
 
     // assignment
 
@@ -246,6 +262,7 @@ public:
     unique_ptr& operator=(unique_ptr&& up) noexcept
     {
         reset(up.release());
+        auto& _deleter = _impl._impl_deleter();
 	    _deleter = up.get_deleter();
         return *this;
     }
@@ -265,6 +282,7 @@ public:
     element_type&
     operator[](std::size_t i) const noexcept
     {
+        auto _ptr = _impl._impl_ptr();
         assert(_ptr != nullptr);
         return _ptr[i];
     }
@@ -272,21 +290,21 @@ public:
     /// Gets the stored pointer
     pointer
     get() const noexcept
-    { return _ptr; }
+    { return _impl._impl_ptr(); }
 
     /// Gets a reference to the stored deleter
     deleter_type&
     get_deleter() noexcept
-    { return _deleter; }
+    { return _impl._impl_deleter(); }
 
     /// Gets a const reference to the stored deleter
     const deleter_type&
     get_deleter() const noexcept
-    { return _deleter; }
+    { return _impl._impl_deleter(); }
 
     /// Checks if there is an associated managed object
     explicit operator bool() const noexcept
-    { return (_ptr) ? true : false; }
+    { return (_impl._impl_ptr()) ? true : false; }
 
     // 20.7.1.3.3 modifiers
 
@@ -294,6 +312,7 @@ public:
     pointer
     release() noexcept
     {
+        auto& _ptr = _impl._impl_ptr();
         pointer cp = _ptr;
         _ptr = nullptr;
         return cp;
@@ -303,6 +322,8 @@ public:
     void
     reset(pointer p) noexcept
     {
+        auto& _ptr = _impl._impl_ptr();
+        auto& _deleter = _impl._impl_deleter();
         if (_ptr) _deleter(_ptr); 
         _ptr = p;
     }
@@ -311,6 +332,8 @@ public:
     void
     reset() noexcept
     {
+        auto& _ptr = _impl._impl_ptr();
+        auto& _deleter = _impl._impl_deleter();
         if (_ptr) _deleter(_ptr);
         _ptr = pointer{}; /// probably nullptr
     }
@@ -320,8 +343,7 @@ public:
     swap(unique_ptr& up) noexcept
     {
         using std::swap;
-        swap(_ptr, up._ptr);
-        swap(_deleter, up._deleter);
+        swap(_impl, up._impl);
     }
     
     // Disable copy from lvalue
@@ -333,8 +355,7 @@ public:
     unique_ptr& operator=(const unique_ptr&) = delete;
 
 private:
-    pointer _ptr;
-    deleter_type _deleter;
+    detail::Ptr<T, D> _impl;
 };
 
 /* added in C++14 */

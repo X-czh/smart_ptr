@@ -13,10 +13,12 @@
 #include <cassert>
 
 // #include <memory>
+// using std::default_deleter;
 // using std::unique_ptr;
 // using std::make_unique; // requires C++14
 
 #include "smart_ptr.hpp"
+using smart_ptr::default_delete;
 using smart_ptr::unique_ptr;
 using smart_ptr::make_unique;
 
@@ -84,6 +86,26 @@ int main()
         unique_ptr<D[]> up{new D[3]};
         up[2].bar();
     } // calls ~D 3 times
+
+    std::cout << "\nEmpty Base Optimization (EBO) demo\n";
+    {
+        auto up1 = unique_ptr<int>{new int{3}};
+        auto up2 = unique_ptr<int, default_delete<int>>{new int{3}};
+
+        auto f = [](int* ptr){ delete ptr; };
+        auto up3 = unique_ptr<int, decltype(f)>{new int{3}, f};
+        auto up4 = unique_ptr<int, std::function<void(int*)>>{new int{3}, f};
+
+        std::ofstream("demo.txt") << 'x'; // prepare the file to read
+        auto up5 = unique_ptr<std::FILE, decltype(&close_file)>
+            {std::fopen("demo.txt", "r"), &close_file};
+
+        std::cout << sizeof(up1) << std::endl; // 8
+        std::cout << sizeof(up2) << std::endl; // still 8 by EBO
+        std::cout << sizeof(up3) << std::endl; // still 8 by EBO
+        std::cout << sizeof(up4) << std::endl; // 40, std::function takes 32 bytes
+        std::cout << sizeof(up5) << std::endl; // 16, additional function pointer
+    }
 
     return 0;
 }

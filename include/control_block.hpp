@@ -6,6 +6,7 @@
 #include <memory>       // allocator, addressof
 #include <atomic>       // atomic
 
+#include "ptr.hpp"
 #include "default_delete.hpp"
 
 namespace smart_ptr {
@@ -41,28 +42,22 @@ public:
  *  internal shared_ptr details, not the object.
  */
 
-template<typename T,
-         typename D = default_delete<T>, 
-         typename A = std::allocator<T>>
+template<typename T, typename D = default_delete<T>>
 class control_block : public control_block_base {
 public:
     using element_type = T;
     using deleter_type = D;
-    using allocator_type = A;
 
     // Constructors
 
     control_block(T* p)
-    : _ptr{p}, _deleter{D{}}, _allocator{A{}}
-    { }
+    : _impl{p}
+    {}
     
     control_block(T* p, D d)
-    : _ptr{p}, _deleter{d}, _allocator{A{}}
+    : _impl{p, d}
     { }
 
-    control_block(T* p, D d, A a)
-    : _ptr{p}, _deleter{d}, _allocator{a}
-    { }
 
     // Destructor
 
@@ -82,6 +77,8 @@ public:
     void
     dec_ref() noexcept override
     {
+        auto _ptr = _impl._impl_ptr();
+        auto& _deleter = _impl._impl_deleter();
         if (--_use_count == 0) {
             if (_ptr) _deleter(_ptr); // destroy the object _ptr points to
             dec_wref();
@@ -107,8 +104,8 @@ public:
     { return _use_count == 1; }
 
     long
-    weak_use_count() const noexcept override // Returns #weak_ptr + 1, see Note below
-    { return _weak_use_count; }
+    weak_use_count() const noexcept override // Returns #weak_ptr
+    { return _weak_use_count - ((_use_count > 0) ? 1 : 0); }
 
     bool
     expired() const noexcept override
@@ -116,14 +113,12 @@ public:
 
     void*
     get_deleter() noexcept override // Type erasure for storing deleter
-    { return reinterpret_cast<void*>(std::addressof(_deleter)); }
+    { return reinterpret_cast<void*>(std::addressof(_impl._impl_deleter())); }
 
 private:
     std::atomic<long> _use_count{1};
     std::atomic<long> _weak_use_count{1}; // Note: _weak_use_count = #weak_ptrs + (#shared_ptr > 0) ? 1 : 0
-    element_type* _ptr;         // stored pointer
-    deleter_type _deleter;      // stored deleter
-    allocator_type _allocator;  // stored allocator
+    Ptr<T, D> _impl;
 };
 
 } // namespace detail
