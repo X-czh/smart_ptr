@@ -48,7 +48,7 @@ To run the demo, run Makefile, pthread support required.
 
 ## Implementation
 
-![impl](https://github.com/X-czh/smart_ptr/blob/master/img/impl.jpg)
+![impl](img/impl.jpg)
 
 ### Empty base optimization to store stateless deleter with zero size fee
 
